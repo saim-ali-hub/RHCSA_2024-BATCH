@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Root check
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Please run as root"
+    exit 1
+fi
+
+# Move script if present locally
+if [ -f ".clone-client-mess-up1" ]; then
+    mv -f .clone-client-mess-up1 /usr/share/.clone-client-mess-up1 2>/dev/null
+fi
+
+# Verify script exists
+if [ ! -f /usr/share/.clone-client-mess-up1 ]; then
+    echo "Error: /usr/share/.clone-client-mess-up1 not found"
+    exit 1
+fi
+
+# Source the script SAFELY
+set +e
+source /usr/share/.clone-client-mess-up1 2>/dev/null
+set +e
+
+# Menu loop
+echo "Select an option:"
+echo "1) changing_rootpw_repos_chrony"
+echo "2) changing_other_configurations"
+echo "3) Configure_LVM"
+echo "q) Quit"
+
+while true; do
+    read -p "Enter choice (1, 2, q): " code
+    echo ""
+
+    case "$code" in
+        1)
+            changing_rootpw_repos_chrony
+            read -p "Reboot system now? (y/n): " ans
+            [[ "$ans" == "y" ]] && shutdown -r now
+            ;;
+        2)
+            changing_other_configurations
+            ;;
+        3) 
+            Configure_LVM 
+            ;;
+        q|Q)
+            echo "Exiting... Goodbye!"
+            exit 0
+            ;;
+        *)
+            echo "Invalid option. Try again."
+            ;;
+    esac
+done
+)
