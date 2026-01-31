@@ -1,0 +1,150 @@
+#!/bin/bash
+eval_banner() {
+echo -e "\n\e[36mLINOOP TEK INNOVATIONS RHCSA EVALUATION 2024 TOOL STARTING\nKEEP CALM AND SIT TIGHT\e[0m"
+echo -e "\n\e[37m***********************RUNNING NOW******************************\n\e[0m"
+}
+: ' This Script evaluate students tasks
+    - check static IP   	        --DONE
+    - check repos			        --DONE
+    - check root pw			        --DONE
+    - check chrony			        --DONE
+    - validate_autofs				--DONE
+  '
+if [ `id -u` != 0 ];then
+        echo ""
+        echo -e "\e[31mFailed: Please Run this Script as root\e[0m\n"
+        exit 1
+fi
+###############################################################################
+check_interface() {
+    if ip link show "$1" > /dev/null 2>&1; then
+       echo -e "\nNetwork interface $1 exists.\n"
+       #echo -e "          Running Validation"
+       #echo -e "------------------------------------------\n"
+       return 0
+    else
+       echo -e "\e[31mNetwork interface $1 does not exist. Please try again.\e[0m\n"
+       return 1
+    fi
+}
+################################################################################
+check_IP() {
+    echo "Check Q1 Checking Root PW........"
+   while true; do
+      read -p "Please Enter your network card name (e.g., enp0s3, ens): " n_card
+      check_interface "$n_card" && break
+   done
+
+   ip_test=$(nmcli con show "$n_card" | grep ipv4.method | awk '{print $2}')
+
+   echo -n "Checking IP"
+   for i in {1..10}; do
+       echo -n "."
+       sleep 0.1
+   done
+   echo ""
+
+   if [ -z "$ip_test" ]; then
+       echo -e "\e[31mCould not determine IP method for interface $n_card\e[0m\n"
+       return 1
+   fi
+
+   if [ "$ip_test" == "manual" ]; then
+        echo -e "\e[32mIP_Check: PASS\e[0m\n"
+   else
+        echo -e "\e[31mIP_Check: FAIL\e[0m\n"
+   fi
+}
+################################################################################
+check_repos(){
+   echo "Q2: Checking Repositories.........."
+app_chk=$(yum repolist enabled | grep -i AppStream | wc -l)
+base_chk=$(yum repolist enabled | grep -i BaseOs | wc -l)
+
+   if [ "$app_chk" -eq 0 ];then
+     echo -e "\e[31mAPPSTREAM_Check: Fail\e[0m\n"
+   else
+     echo -e "\e[32mAPPSTREAM_Check: Pass\e[0m\n"
+   fi
+   if [ "$base_chk" -eq 0 ];then
+     echo -e "\e[31mBASEOS_Check: Fail\e[0m\n"
+   else
+     echo -e "\e[32mBASEOS_Check: Pass\e[0m\n"
+   fi
+}
+
+###############################################################################
+check_pw() {
+   echo "Check Q3 Checking Root PW........"
+
+   # Install sshpass if not already installed
+   if ! command -v sshpass &>/dev/null; then
+      dnf install -q -y sshpass &>/dev/null
+      if [ $? -ne 0 ]; then
+         echo -e "\e[31mFailed to install sshpass. Exiting.\e[0m"
+         exit 1
+      fi
+   fi
+
+   # Update sshd config
+   sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+   sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+   systemctl restart sshd &>/dev/null
+   if [ $? -ne 0 ]; then
+      echo -e "\e[31mFailed to restart sshd. Exiting.\e[0m"
+      exit 1
+   fi
+
+   # Try logging in with root password
+   sshpass -p 'redhat' ssh -o StrictHostKeyChecking=no root@localhost 'pwd >/dev/null' &>/dev/null
+   if [ $? -eq 0 ]; then
+      echo -e "\e[32mRoot_PW_Check: Pass\e[0m\n"
+   else
+      echo -e "\e[31mRoot_PW_Check: Fail\e[0m\n"
+   fi
+}
+###################################################################################
+check_chrony() {
+    echo "Q4: Checking Chrony service..."
+    
+    # Service active?
+    if systemctl is-active --quiet chronyd; then
+        echo -e "\e[32mChrony service: Active\e[0m"
+    else
+        echo -e "\e[31mChrony service: Inactive\e[0m"
+        return 1
+    fi
+
+    # Leap status check – correct field
+    leap_status=$(chronyc tracking | awk -F': ' '/Leap status/ {print $2}')
+    
+    if [ "$leap_status" = "Normal" ]; then
+        echo -e "\e[32mChrony sync: OK : Pass\e[0m"
+    else
+        echo -e "\e[31mChrony sync: Not synchronized : Fail\e[0m"
+    fi
+}
+######################################################################################
+user_name="user1"
+validate_autofs() {
+    echo "Q5: Checking Autofs......."
+
+    # cleanup any previous test file
+    rm -f /rhome/$user_name/uniq1 &>/dev/null
+
+    # access the path to trigger autofs mount
+    su - $user_name -c "touch /rhome/$user_name/uniq1" &>/dev/null
+    file_st=$?
+
+    # now check if autofs mounted it
+    mount | grep "/rhome/$user_name" &>/dev/null
+    mn_st=$?
+
+    if [ $file_st -eq 0 ] && [ $mn_st -eq 0 ]; then
+        echo -e "\e[32mAutoFS_Check: Pass\e[0m\n"
+    else
+        echo -e "\e[31mAutoFS_Check: Fail\e[0m\n"
+    fi
+}
+######################################################################################
