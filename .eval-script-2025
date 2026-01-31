@@ -9,6 +9,8 @@ echo -e "\n\e[37m***********************RUNNING NOW*****************************
     - check root pw			        --DONE
     - check chrony			        --DONE
     - validate_autofs				--DONE
+    - check selinux                 --DONE
+    - check collaboration directory --DONE
   '
 if [ `id -u` != 0 ];then
         echo ""
@@ -148,3 +150,99 @@ validate_autofs() {
     fi
 }
 ######################################################################################
+check_selinux() {
+    echo "Q6: Validating Webserver selinux file context, firewall rule & selinux Port 82..."
+
+    # Check website content
+    webpage_content=$(curl -s --max-time 3 http://localhost:82)
+    curl_status=$?
+
+    # Check firewall for port 82
+    firewall-cmd --list-ports 2>/dev/null | grep -q '^82/tcp'
+    fw_status=$?
+
+    # Check if SELinux allows port 82 for HTTP
+    semanage port -l 2>/dev/null | grep -E '^http_port_t' | grep -q '\b82\b'
+    selinux_port_status=$?
+
+    
+    if [ $curl_status -eq 0 ] && [ "$webpage_content" = "I am enjoying RHCSA preparation" ]; then
+        echo -e "\e[32mSelinux_Web_Running: Pass\e[0m"
+    else
+        echo -e "\e[31mSelinux_Web_Running: Fail\e[0m"
+    fi
+
+      if [ $fw_status -eq 0 ]; then
+        echo -e "\e[32mSelinux_Web_Firewall_Port: Pass\e[0m"
+    else
+        echo -e "\e[31mSelinux_Web_Firewall_Port: Fail\e[0m"
+    fi
+
+    if [ $selinux_port_status -eq 0 ]; then
+        echo -e "\e[32mSelinux_HTTP_Port_Label: Pass\e[0m"
+    else
+        echo -e "\e[31mSelinux_HTTP_Port_Label: Fail\e[0m"
+    fi
+
+    echo
+}
+################################################################################
+check_collaboration_dir() {
+
+    echo "Q7: Validating Collaboration Directory /project ..."
+    echo
+
+    dir="/project"
+    group="developers"
+
+    r1=r2=r3=r4=r5="FAIL"
+
+    # Step 1: Directory exists
+    if [ -d "$dir" ]; then
+        echo -e "\e[32m[1] Directory exists: PASS\e[0m"
+        r1="PASS"
+    else
+        echo -e "\e[31m[1] Directory exists: FAIL\e[0m"
+        echo -e "\n\e[31mCollaboration Directory: FAIL\e[0m"
+        return
+    fi
+
+    # Step 2: Group ownership
+    dir_group=$(stat -c "%G" "$dir")
+    if [ "$dir_group" = "$group" ]; then
+        echo -e "\e[32m[2] Group = developers: PASS\e[0m"
+        r2="PASS"
+    else
+        echo -e "\e[31m[2] Group ownership: FAIL (Found $dir_group)\e[0m"
+    fi
+
+    # Step 3: Permissions (770, 2770, 3770 allowed)
+    perm=$(stat -c "%a" "$dir")
+    if [[ "$perm" =~ ^(770|2770|3770)$ ]]; then
+        echo -e "\e[32m[3] Permissions correct (770 family): PASS\e[0m"
+        r3="PASS"
+    else
+        echo -e "\e[31m[3] Permissions incorrect: FAIL (Found $perm)\e[0m"
+    fi
+
+    # Step 4: SGID bit
+    stat -c "%A" "$dir" | grep -q "s" &&
+        echo -e "\e[32m[4] SGID bit: PASS\e[0m" && r4="PASS" ||
+        echo -e "\e[31m[4] SGID bit: FAIL\e[0m"
+
+    # Step 5: Sticky bit
+    stat -c "%A" "$dir" | grep -q "T" &&
+        echo -e "\e[32m[5] Sticky bit: PASS\e[0m" && r5="PASS" ||
+        echo -e "\e[31m[5] Sticky bit: FAIL\e[0m"
+
+    # Final Status
+    echo
+    if [[ "$r1$r2$r3$r4$r5" == "PASSPASSPASSPASSPASS" ]]; then
+        echo -e "\e[32mCollaboration Directory: PASS\e[0m"
+    else
+        echo -e "\e[31mCollaboration Directory: FAIL\e[0m"
+    fi
+
+    echo
+}
+################################################################################
