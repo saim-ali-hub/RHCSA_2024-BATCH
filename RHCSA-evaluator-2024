@@ -1,16 +1,16 @@
 #!/bin/bash
 
-if [ -e ".eval-script-2025" ]; then
-    mv -f .eval-script-2025 /usr/share/.eval-script-2025 2>/dev/null
+if [ -e ".eval-script-2024" ]; then
+    mv -f .eval-script-2024 /usr/share/.eval-script-2024 2>/dev/null
 fi
 # Ensure the eval script exists and can be sourced
-if [ ! -f /usr/share/.eval-script-2025 ]; then
-    echo "Error: eval-script-2025 file not found!"
+if [ ! -f /usr/share/.eval-script-2024 ]; then
+    echo "Error: eval-script-2024 file not found!"
     exit 1
 fi
 
-if ! source /usr/share/.eval-script-2025 2>/dev/null; then
-    echo "Error: Cannot source eval-script-2025"
+if ! source /usr/share/.eval-script-2024 2>/dev/null; then
+    echo "Error: Cannot source eval-script-2024"
     exit 1
 fi
 
@@ -23,93 +23,17 @@ while true; do
     echo ""
 
     case "$question" in
-        1) check_pw ;;
-        2) check_IP ;;
-        3)
-            check_webimage25
-            check_webimage
-            ;;
-        4)
-            check_container25
-            check_myweb
-            check_pdf_file_conversion
-            ;;
-        5) check_repos ;;
+        1) check_IP ;;
+        2) check_repos ;;
+        3) check_pw ;;
         6) check_chrony ;;
         7) validate_autofs ;;
-        8) validate_autofs_public_private ;;
-        9) check_selinux ;;
-        10) check_collaboration_dir ;;
-        11) 
-            check_group
-            check_users
-            check_grp_membership
-            check_usr_shell
-            check_sudo
-            check_umask
-            check_natasha_permissions
-            ;;
-        12) 
-            check_enforce_password
-            check_account_expiry
-            ;;
-        13) check_max_days ;;
-        14) check_group_pkg ;;
-        15) check_tuned_profile ;;
-        16)
-            check_cron
-            check_natasha_cron_blocked
-            ;;
-        17) check_journal ;; 
-        18) check_bzip2_compression ;;
-        19) check_lv1_create_extend ;;
-        20) check_lv2_extents ;;
-        21) check_swap ;;
-        22) check_lv3_shrink ;;
-        23)
-             check_perm_ACL_fstab 
-             check_directory_ACL           
-             ;;
-        24) validate_find ;;
-        25) validate_grep ;;
         all)
-            check_pw
             check_IP
-            check_webimage25
-            check_webimage
-            check_container25
-            check_myweb
-            check_pdf_file_conversion
             check_repos
+            check_pw
             check_chrony
             validate_autofs
-            validate_autofs_public_private
-            check_selinux
-            check_collaboration_dir
-             check_group
-            check_users
-            check_grp_membership
-            check_usr_shell
-            check_sudo
-            check_umask
-            check_natasha_permissions
-            check_enforce_password
-            check_account_expiry
-            check_max_days
-            check_group_pkg
-            check_tuned_profile
-            check_cron
-            check_natasha_cron_blocked
-            check_journal
-            check_bzip2_compression
-            check_lv1_create_extend
-            check_lv2_extents
-            check_swap
-            check_lv3_shrink
-            check_perm_ACL_fstab 
-            check_directory_ACL
-            validate_find
-            validate_grep
             ;;
         q|quit|exit)
             echo "Exiting..."
